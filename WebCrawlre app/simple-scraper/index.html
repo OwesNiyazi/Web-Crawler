@@ -24,10 +24,8 @@
     .btn-primary:disabled { background: #555; cursor: not-allowed; }
     .btn-copy { background: #262626; color: #ccc; border: 1px solid #333; padding: 8px 16px; font-size: 13px; }
     .btn-copy:hover { background: #333; }
-    .btn-stop { background: #dc2626; color: #fff; padding: 12px 24px; }
-    .btn-stop:hover { background: #b91c1c; }
     .crawl-options { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; color: #888; font-size: 14px; }
-    .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
     .tab { padding: 8px 16px; border: 1px solid #333; border-radius: 6px; background: #1a1a1a; color: #888; cursor: pointer; font-size: 13px; }
     .tab.active { background: #f97316; color: #fff; border-color: #f97316; }
     .result-box { background: #111; border: 1px solid #262626; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
@@ -62,6 +60,25 @@
     .page-badge { font-size: 11px; background: #262626; color: #888; padding: 2px 8px; border-radius: 4px; margin-left: 8px; white-space: nowrap; }
     .crawl-errors { margin-top: 8px; }
     .crawl-error { font-size: 13px; color: #f87171; padding: 4px 0; }
+    /* SEO styles */
+    .seo-score { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; font-size: 20px; font-weight: 700; border: 4px solid; }
+    .seo-score.good { color: #4ade80; border-color: #4ade80; }
+    .seo-score.ok { color: #facc15; border-color: #facc15; }
+    .seo-score.bad { color: #f87171; border-color: #f87171; }
+    .seo-section { margin-bottom: 14px; }
+    .seo-section-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; padding: 4px 0; }
+    .seo-item { font-size: 13px; padding: 5px 8px; border-radius: 4px; margin-bottom: 3px; display: flex; align-items: flex-start; gap: 6px; }
+    .seo-item.issue { background: #2d1111; color: #f87171; }
+    .seo-item.warning { background: #2d2511; color: #facc15; }
+    .seo-item.pass { background: #112d17; color: #4ade80; }
+    .seo-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .seo-meta-box { background: #0a0a0a; border: 1px solid #222; border-radius: 6px; padding: 8px 12px; }
+    .seo-meta-box label { font-size: 10px; color: #666; text-transform: uppercase; }
+    .seo-meta-box span { display: block; font-size: 13px; color: #ccc; margin-top: 2px; word-break: break-word; }
+    .seo-score-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 8px; white-space: nowrap; }
+    .seo-score-badge.good { background: #112d17; color: #4ade80; }
+    .seo-score-badge.ok { background: #2d2511; color: #facc15; }
+    .seo-score-badge.bad { background: #2d1111; color: #f87171; }
   </style>
 </head>
 <body>
@@ -93,9 +110,7 @@
     <div id="loading" class="loading hidden">
       <div class="spinner"></div>
       <p id="loadingText">Scraping page...</p>
-      <div id="progressBar" class="progress-bar hidden">
-        <div class="progress-fill" id="progressFill" style="width:0%"></div>
-      </div>
+      <div id="progressBar" class="progress-bar hidden"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
       <p id="progressText" style="font-size:13px;margin-top:8px" class="hidden"></p>
     </div>
 
@@ -107,28 +122,26 @@
         <div class="meta-item"><label>Title</label><p id="metaTitle">-</p></div>
         <div class="meta-item"><label>Description</label><p id="metaDesc">-</p></div>
       </div>
-      <div class="tabs">
+      <div class="tabs" id="singleTabs">
         <div class="tab active" onclick="showTab('content', this)">Content</div>
         <div class="tab" onclick="showTab('links', this)">Links</div>
         <div class="tab" onclick="showTab('images', this)">Images</div>
+        <div class="tab" onclick="showTab('seo', this)">SEO</div>
       </div>
       <div id="tab-content" class="result-box">
-        <div class="result-header">
-          <h3>Page Content</h3>
-          <button class="btn-copy" onclick="copyContent()">📋 Copy</button>
-        </div>
+        <div class="result-header"><h3>Page Content</h3><button class="btn-copy" onclick="copyContent()">📋 Copy</button></div>
         <div class="content-area" id="contentArea"></div>
       </div>
       <div id="tab-links" class="result-box hidden">
-        <div class="result-header">
-          <h3>Links Found (<span id="linkCount">0</span>)</h3>
-          <button class="btn-copy" onclick="copyLinks()">📋 Copy All</button>
-        </div>
+        <div class="result-header"><h3>Links Found (<span id="linkCount">0</span>)</h3><button class="btn-copy" onclick="copyLinks()">📋 Copy All</button></div>
         <div class="links-list" id="linksList"></div>
       </div>
       <div id="tab-images" class="result-box hidden">
         <div class="result-header"><h3>Images (<span id="imgCount">0</span>)</h3></div>
         <div class="images-grid" id="imagesGrid"></div>
+      </div>
+      <div id="tab-seo" class="result-box hidden">
+        <div id="seoContent"></div>
       </div>
     </div>
 
@@ -171,41 +184,57 @@
       else crawlMulti();
     }
 
+    function scoreClass(s) { return s >= 70 ? "good" : s >= 40 ? "ok" : "bad"; }
+
+    function renderSEO(seo) {
+      const sc = scoreClass(seo.score);
+      return `
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+          <div class="seo-score ${sc}">${seo.score}</div>
+          <div><div style="font-size:16px;font-weight:600">SEO Score</div>
+            <div style="font-size:13px;color:#888">${seo.issues.length} issues · ${seo.warnings.length} warnings · ${seo.passed.length} passed</div>
+          </div>
+        </div>
+        <div class="seo-meta-grid">
+          <div class="seo-meta-box"><label>Title</label><span>${esc(seo.title)}</span></div>
+          <div class="seo-meta-box"><label>Description</label><span>${esc(seo.description || '(missing)')}</span></div>
+          <div class="seo-meta-box"><label>Canonical</label><span>${esc(seo.canonical || '(missing)')}</span></div>
+          <div class="seo-meta-box"><label>Language</label><span>${esc(seo.lang || '(missing)')}</span></div>
+          <div class="seo-meta-box"><label>OG Title</label><span>${esc(seo.ogTitle || '(missing)')}</span></div>
+          <div class="seo-meta-box"><label>OG Image</label><span>${esc(seo.ogImage || '(missing)')}</span></div>
+          <div class="seo-meta-box"><label>Headings</label><span>H1:${seo.headings.h1} H2:${seo.headings.h2} H3:${seo.headings.h3} H4:${seo.headings.h4}</span></div>
+          <div class="seo-meta-box"><label>Links</label><span>Internal: ${seo.links.internal} · External: ${seo.links.external}</span></div>
+          <div class="seo-meta-box"><label>Images</label><span>Total: ${seo.images.total} · Missing alt: ${seo.images.missingAlt}</span></div>
+        </div>
+        ${seo.issues.length ? `<div class="seo-section"><div class="seo-section-title" style="color:#f87171">❌ Issues</div>${seo.issues.map(i=>`<div class="seo-item issue">• ${esc(i)}</div>`).join("")}</div>` : ""}
+        ${seo.warnings.length ? `<div class="seo-section"><div class="seo-section-title" style="color:#facc15">⚠️ Warnings</div>${seo.warnings.map(w=>`<div class="seo-item warning">• ${esc(w)}</div>`).join("")}</div>` : ""}
+        ${seo.passed.length ? `<div class="seo-section"><div class="seo-section-title" style="color:#4ade80">✅ Passed</div>${seo.passed.map(p=>`<div class="seo-item pass">• ${esc(p)}</div>`).join("")}</div>` : ""}
+      `;
+    }
+
     async function scrapeSingle() {
       const url = document.getElementById("urlInput").value.trim();
       const format = document.getElementById("formatSelect").value;
       if (!url) return;
-
-      showLoading("Scraping page...");
-      hideResults();
-
+      showLoading("Scraping page..."); hideResults();
       try {
-        const res = await fetch("/api/scrape", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, format }),
-        });
+        const res = await fetch("/api/scrape", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url, format }) });
         const json = await res.json();
         if (!json.success) throw new Error(json.error);
-
         lastData = json.data;
-        document.getElementById("metaTitle").textContent = json.data.title || "-";
-        document.getElementById("metaDesc").textContent = json.data.description || "-";
-        document.getElementById("contentArea").textContent = json.data.content;
-        document.getElementById("linkCount").textContent = json.data.links.length;
-        document.getElementById("imgCount").textContent = json.data.images.length;
-        document.getElementById("linksList").innerHTML = json.data.links.map(l =>
-          `<a href="${esc(l.url)}" target="_blank" title="${esc(l.url)}">${esc(l.text)} — ${esc(l.url)}</a>`
-        ).join("");
-        document.getElementById("imagesGrid").innerHTML = json.data.images.map(i =>
-          `<img src="${esc(i.src)}" alt="${esc(i.alt)}" title="${esc(i.alt)}" loading="lazy" onerror="this.style.display='none'" />`
-        ).join("");
+        const d = json.data || {};
+        document.getElementById("metaTitle").textContent = d.title || "-";
+        document.getElementById("metaDesc").textContent = d.description || "-";
+        document.getElementById("contentArea").textContent = d.content || "";
+        document.getElementById("linkCount").textContent = (d.links || []).length;
+        document.getElementById("imgCount").textContent = (d.images || []).length;
+        document.getElementById("linksList").innerHTML = (d.links || []).map(l => `<a href="${esc(l.url)}" target="_blank" title="${esc(l.url)}">${esc(l.text)} — ${esc(l.url)}</a>`).join("");
+        document.getElementById("imagesGrid").innerHTML = (d.images || []).map(i => `<img src="${esc(i.src)}" alt="${esc(i.alt)}" title="${esc(i.alt)}" loading="lazy" onerror="this.style.display='none'" />`).join("");
+        if (d.seo) document.getElementById("seoContent").innerHTML = renderSEO(d.seo);
+        else document.getElementById("seoContent").innerHTML = '<p style="color:#888">No SEO data available</p>';
         document.getElementById("singleResults").classList.remove("hidden");
-      } catch (err) {
-        showError(err.message);
-      } finally {
-        hideLoading();
-      }
+      } catch (err) { showError(err.message); }
+      finally { hideLoading(); }
     }
 
     async function crawlMulti() {
@@ -213,26 +242,15 @@
       const format = document.getElementById("formatSelect").value;
       const maxPages = document.getElementById("maxPages").value;
       if (!url) return;
-
-      showLoading("Starting crawl...");
-      hideResults();
+      showLoading("Starting crawl..."); hideResults();
       document.getElementById("progressBar").classList.remove("hidden");
       document.getElementById("progressText").classList.remove("hidden");
-
       try {
-        const res = await fetch("/api/crawl", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, format, maxPages: parseInt(maxPages) }),
-        });
+        const res = await fetch("/api/crawl", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url, format, maxPages: parseInt(maxPages) }) });
         const json = await res.json();
         if (!json.success) throw new Error(json.error);
-
         pollCrawl(json.crawlId, parseInt(maxPages));
-      } catch (err) {
-        showError(err.message);
-        hideLoading();
-      }
+      } catch (err) { showError(err.message); hideLoading(); }
     }
 
     function pollCrawl(crawlId, maxPages) {
@@ -242,41 +260,33 @@
           const res = await fetch(`/api/crawl/${crawlId}`);
           const json = await res.json();
           if (!json.success) throw new Error(json.error);
-
           const pct = Math.round((json.pages.length / maxPages) * 100);
           document.getElementById("progressFill").style.width = pct + "%";
           document.getElementById("loadingText").textContent = `Crawling... ${json.pages.length}/${maxPages} pages`;
-          document.getElementById("progressText").textContent = json.pages.length > 0
-            ? `Latest: ${json.pages[json.pages.length - 1].title || json.pages[json.pages.length - 1].url}`
-            : "";
-
+          document.getElementById("progressText").textContent = json.pages.length > 0 ? `Latest: ${json.pages[json.pages.length - 1].title || json.pages[json.pages.length - 1].url}` : "";
           if (json.status === "done") {
-            clearInterval(pollTimer);
-            pollTimer = null;
+            clearInterval(pollTimer); pollTimer = null;
             crawlPages = json.pages;
-            renderCrawlResults(json);
-            hideLoading();
+            renderCrawlResults(json); hideLoading();
           }
-        } catch (err) {
-          clearInterval(pollTimer);
-          showError(err.message);
-          hideLoading();
-        }
+        } catch (err) { clearInterval(pollTimer); showError(err.message); hideLoading(); }
       }, 1000);
     }
 
     function renderCrawlResults(data) {
       document.getElementById("crawlCount").textContent = data.pages.length;
       document.getElementById("crawlStatus").textContent = "Complete ✓";
-
       const list = document.getElementById("pageList");
-      list.innerHTML = data.pages.map((p, i) => `
+      list.innerHTML = data.pages.map((p, i) => {
+        const seoScore = p.seo ? p.seo.score : null;
+        const sc = seoScore !== null ? scoreClass(seoScore) : "";
+        return `
         <div class="page-item">
           <div class="page-item-header" onclick="togglePage(${i})">
             <h4>${esc(p.title || "Untitled")}</h4>
             <span class="page-url">${esc(p.url)}</span>
+            ${seoScore !== null ? `<span class="seo-score-badge ${sc}">SEO ${seoScore}</span>` : ""}
             <span class="page-badge">${p.links ? p.links.length + ' links' : ''}</span>
-            <span class="page-badge">${p.images ? p.images.length + ' imgs' : ''}</span>
             <span class="page-badge">${i + 1}</span>
             <button class="btn-copy" onclick="event.stopPropagation(); copyPageContent(${i})" style="margin-left:8px">📋</button>
           </div>
@@ -285,105 +295,63 @@
               <div class="tab active" onclick="event.stopPropagation(); showPageTab(${i},'content',this)">Content</div>
               <div class="tab" onclick="event.stopPropagation(); showPageTab(${i},'links',this)">Links (${p.links ? p.links.length : 0})</div>
               <div class="tab" onclick="event.stopPropagation(); showPageTab(${i},'images',this)">Images (${p.images ? p.images.length : 0})</div>
+              <div class="tab" onclick="event.stopPropagation(); showPageTab(${i},'seo',this)">SEO</div>
             </div>
-            <div id="page-${i}-content">
-              <div class="content-area">${esc(p.content)}</div>
-            </div>
+            <div id="page-${i}-content"><div class="content-area">${esc(p.content)}</div></div>
             <div id="page-${i}-links" class="hidden">
-              <div class="links-list">${(p.links || []).map(l =>
-                `<a href="${esc(l.url)}" target="_blank" title="${esc(l.url)}">${esc(l.text)} — ${esc(l.url)}</a>`
-              ).join("")}</div>
+              <div class="links-list">${(p.links||[]).map(l=>`<a href="${esc(l.url)}" target="_blank">${esc(l.text)} — ${esc(l.url)}</a>`).join("")}</div>
               <button class="btn-copy" onclick="event.stopPropagation(); copyPageLinks(${i})" style="margin-top:8px">📋 Copy Links</button>
             </div>
             <div id="page-${i}-images" class="hidden">
-              <div class="images-grid">${(p.images || []).map(img =>
-                `<img src="${esc(img.src)}" alt="${esc(img.alt)}" title="${esc(img.alt)}" loading="lazy" onerror="this.style.display='none'" />`
-              ).join("")}</div>
+              <div class="images-grid">${(p.images||[]).map(img=>`<img src="${esc(img.src)}" alt="${esc(img.alt)}" loading="lazy" onerror="this.style.display='none'" />`).join("")}</div>
             </div>
+            <div id="page-${i}-seo" class="hidden">${p.seo ? renderSEO(p.seo) : '<p style="color:#888">No SEO data</p>'}</div>
           </div>
-        </div>
-      `).join("");
-
+        </div>`;
+      }).join("");
       if (data.errors && data.errors.length > 0) {
-        document.getElementById("crawlErrors").innerHTML =
-          `<p style="color:#888;font-size:13px;margin-bottom:4px">${data.errors.length} page(s) failed:</p>` +
-          data.errors.map(e => `<div class="crawl-error">✗ ${esc(e.url)} — ${esc(e.error)}</div>`).join("");
+        document.getElementById("crawlErrors").innerHTML = `<p style="color:#888;font-size:13px;margin-bottom:4px">${data.errors.length} page(s) failed:</p>` + data.errors.map(e => `<div class="crawl-error">✗ ${esc(e.url)} — ${esc(e.error)}</div>`).join("");
       }
-
       document.getElementById("multiResults").classList.remove("hidden");
     }
 
-    function togglePage(i) {
-      document.getElementById("page-body-" + i).classList.toggle("open");
-    }
+    function togglePage(i) { document.getElementById("page-body-" + i).classList.toggle("open"); }
 
     function showPageTab(pageIdx, tabName, el) {
-      const parent = el.parentElement;
-      parent.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      el.parentElement.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
       el.classList.add("active");
-      ["content", "links", "images"].forEach(t => {
-        const section = document.getElementById(`page-${pageIdx}-${t}`);
-        if (section) section.classList.toggle("hidden", t !== tabName);
+      ["content","links","images","seo"].forEach(t => {
+        const s = document.getElementById(`page-${pageIdx}-${t}`);
+        if (s) s.classList.toggle("hidden", t !== tabName);
       });
     }
 
     function showTab(name, el) {
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.getElementById("singleTabs").querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
       el.classList.add("active");
-      ["content", "links", "images"].forEach(t => {
+      ["content","links","images","seo"].forEach(t => {
         document.getElementById("tab-" + t).classList.toggle("hidden", t !== name);
       });
     }
 
-    function copyContent() {
-      if (lastData) navigator.clipboard.writeText(lastData.content).then(() => flash("Content copied"));
-    }
-    function copyLinks() {
-      if (lastData) navigator.clipboard.writeText(lastData.links.map(l => l.url).join("\n")).then(() => flash("Links copied"));
-    }
-    function copyPageContent(i) {
-      if (crawlPages[i]) navigator.clipboard.writeText(crawlPages[i].content).then(() => flash("Page copied"));
-    }
-    function copyPageLinks(i) {
-      if (crawlPages[i] && crawlPages[i].links) {
-        navigator.clipboard.writeText(crawlPages[i].links.map(l => l.url).join("\n")).then(() => flash("Links copied"));
-      }
-    }
+    function copyContent() { if (lastData) navigator.clipboard.writeText(lastData.content).then(() => flash("Content copied")); }
+    function copyLinks() { if (lastData) navigator.clipboard.writeText(lastData.links.map(l => l.url).join("\n")).then(() => flash("Links copied")); }
+    function copyPageContent(i) { if (crawlPages[i]) navigator.clipboard.writeText(crawlPages[i].content).then(() => flash("Page copied")); }
+    function copyPageLinks(i) { if (crawlPages[i]?.links) navigator.clipboard.writeText(crawlPages[i].links.map(l => l.url).join("\n")).then(() => flash("Links copied")); }
     function copyAllPages() {
       const all = crawlPages.map(p => `=== ${p.title || p.url} ===\n${p.url}\n\n${p.content}`).join("\n\n---\n\n");
       navigator.clipboard.writeText(all).then(() => flash("All pages copied"));
     }
 
-    function showLoading(text) {
-      document.getElementById("loading").classList.remove("hidden");
-      document.getElementById("loadingText").textContent = text;
-      document.getElementById("error").classList.add("hidden");
-      document.getElementById("scrapeBtn").disabled = true;
-    }
-    function hideLoading() {
-      document.getElementById("loading").classList.add("hidden");
-      document.getElementById("progressBar").classList.add("hidden");
-      document.getElementById("progressText").classList.add("hidden");
-      document.getElementById("scrapeBtn").disabled = false;
-    }
-    function hideResults() {
-      document.getElementById("singleResults").classList.add("hidden");
-      document.getElementById("multiResults").classList.add("hidden");
-      document.getElementById("error").classList.add("hidden");
-    }
-    function showError(msg) {
-      document.getElementById("error").textContent = "Error: " + msg;
-      document.getElementById("error").classList.remove("hidden");
-    }
-    function esc(s) {
-      const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML;
-    }
+    function showLoading(t) { document.getElementById("loading").classList.remove("hidden"); document.getElementById("loadingText").textContent = t; document.getElementById("error").classList.add("hidden"); document.getElementById("scrapeBtn").disabled = true; }
+    function hideLoading() { document.getElementById("loading").classList.add("hidden"); document.getElementById("progressBar").classList.add("hidden"); document.getElementById("progressText").classList.add("hidden"); document.getElementById("scrapeBtn").disabled = false; }
+    function hideResults() { document.getElementById("singleResults").classList.add("hidden"); document.getElementById("multiResults").classList.add("hidden"); document.getElementById("error").classList.add("hidden"); }
+    function showError(msg) { document.getElementById("error").textContent = "Error: " + msg; document.getElementById("error").classList.remove("hidden"); }
+    function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
     function flash(msg) {
-      const el = document.createElement("div");
-      el.textContent = msg;
+      const el = document.createElement("div"); el.textContent = msg;
       el.style.cssText = "position:fixed;bottom:20px;right:20px;background:#f97316;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:999;";
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 2000);
+      document.body.appendChild(el); setTimeout(() => el.remove(), 2000);
     }
   </script>
 </body>
