@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 WebCrawler</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e5e5e5; min-height: 100vh; }
+    .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 28px; margin-bottom: 8px; color: #f97316; }
+    .subtitle { color: #888; margin-bottom: 24px; }
+    .mode-toggle { display: flex; gap: 4px; margin-bottom: 16px; }
+    .mode-btn { padding: 10px 20px; border: 1px solid #333; border-radius: 8px; background: #1a1a1a; color: #888; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+    .mode-btn.active { background: #f97316; color: #fff; border-color: #f97316; }
+    .input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    input[type="text"] { flex: 1; padding: 12px 16px; border: 1px solid #333; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 15px; outline: none; }
+    input[type="text"]:focus { border-color: #f97316; }
+    input[type="number"] { width: 80px; padding: 12px; border: 1px solid #333; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 14px; outline: none; text-align: center; }
+    select { padding: 12px; border: 1px solid #333; border-radius: 8px; background: #1a1a1a; color: #fff; font-size: 14px; outline: none; cursor: pointer; }
+    button { padding: 12px 24px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #f97316; color: #fff; }
+    .btn-primary:hover { background: #ea580c; }
+    .btn-primary:disabled { background: #555; cursor: not-allowed; }
+    .btn-copy { background: #262626; color: #ccc; border: 1px solid #333; padding: 8px 16px; font-size: 13px; }
+    .btn-copy:hover { background: #333; }
+    .btn-stop { background: #dc2626; color: #fff; padding: 12px 24px; }
+    .btn-stop:hover { background: #b91c1c; }
+    .crawl-options { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; color: #888; font-size: 14px; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+    .tab { padding: 8px 16px; border: 1px solid #333; border-radius: 6px; background: #1a1a1a; color: #888; cursor: pointer; font-size: 13px; }
+    .tab.active { background: #f97316; color: #fff; border-color: #f97316; }
+    .result-box { background: #111; border: 1px solid #262626; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .result-header h3 { font-size: 16px; color: #f97316; }
+    .content-area { background: #0a0a0a; border: 1px solid #222; border-radius: 6px; padding: 16px; max-height: 500px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 14px; line-height: 1.6; }
+    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .meta-item { background: #1a1a1a; padding: 10px 14px; border-radius: 6px; }
+    .meta-item label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    .meta-item p { font-size: 14px; margin-top: 4px; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .links-list { max-height: 300px; overflow: auto; }
+    .links-list a { display: block; padding: 6px 0; color: #60a5fa; text-decoration: none; font-size: 13px; border-bottom: 1px solid #1a1a1a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .links-list a:hover { color: #93c5fd; }
+    .loading { text-align: center; padding: 40px; color: #888; }
+    .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid #333; border-top-color: #f97316; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error { background: #2d1111; border: 1px solid #5c2020; color: #f87171; padding: 12px 16px; border-radius: 8px; margin-top: 16px; }
+    .hidden { display: none; }
+    .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; max-height: 300px; overflow: auto; }
+    .images-grid img { width: 100%; height: 80px; object-fit: cover; border-radius: 4px; background: #1a1a1a; }
+    .progress-bar { width: 100%; height: 6px; background: #262626; border-radius: 3px; margin: 12px 0; overflow: hidden; }
+    .progress-fill { height: 100%; background: #f97316; border-radius: 3px; transition: width 0.3s; }
+    .page-list { margin-top: 12px; }
+    .page-item { background: #1a1a1a; border: 1px solid #262626; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+    .page-item-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; }
+    .page-item-header:hover { background: #222; }
+    .page-item-header h4 { font-size: 14px; color: #e5e5e5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 12px; }
+    .page-item-header .page-url { font-size: 12px; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
+    .page-item-body { padding: 0 16px 16px; display: none; }
+    .page-item-body.open { display: block; }
+    .page-item-body .content-area { max-height: 300px; }
+    .page-badge { font-size: 11px; background: #262626; color: #888; padding: 2px 8px; border-radius: 4px; margin-left: 8px; white-space: nowrap; }
+    .crawl-errors { margin-top: 8px; }
+    .crawl-error { font-size: 13px; color: #f87171; padding: 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔥 WebCrawler</h1>
+    <p class="subtitle">Scrape a single page or crawl an entire website.</p>
+
+    <div class="mode-toggle">
+      <div class="mode-btn active" onclick="setMode('single')">Single Page</div>
+      <div class="mode-btn" onclick="setMode('multi')">Multi Page (Crawl)</div>
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="https://example.com" />
+      <select id="formatSelect">
+        <option value="html">HTML</option>
+        <option value="markdown" selected>Markdown</option>
+        <option value="text">Text</option>
+      </select>
+      <button class="btn-primary" id="scrapeBtn" onclick="startScrape()">Scrape</button>
+    </div>
+
+    <div id="crawlOptions" class="crawl-options hidden">
+      <span>Max pages:</span>
+      <input type="number" id="maxPages" value="10" min="1" max="50" />
+      <span style="color:#666">(1–50)</span>
+    </div>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p id="loadingText">Scraping page...</p>
+      <div id="progressBar" class="progress-bar hidden">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <p id="progressText" style="font-size:13px;margin-top:8px" class="hidden"></p>
+    </div>
+
+    <div id="error" class="error hidden"></div>
+
+    <!-- Single page results -->
+    <div id="singleResults" class="hidden">
+      <div class="meta">
+        <div class="meta-item"><label>Title</label><p id="metaTitle">-</p></div>
+        <div class="meta-item"><label>Description</label><p id="metaDesc">-</p></div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('content', this)">Content</div>
+        <div class="tab" onclick="showTab('links', this)">Links</div>
+        <div class="tab" onclick="showTab('images', this)">Images</div>
+      </div>
+      <div id="tab-content" class="result-box">
+        <div class="result-header">
+          <h3>Page Content</h3>
+          <button class="btn-copy" onclick="copyContent()">📋 Copy</button>
+        </div>
+        <div class="content-area" id="contentArea"></div>
+      </div>
+      <div id="tab-links" class="result-box hidden">
+        <div class="result-header">
+          <h3>Links Found (<span id="linkCount">0</span>)</h3>
+          <button class="btn-copy" onclick="copyLinks()">📋 Copy All</button>
+        </div>
+        <div class="links-list" id="linksList"></div>
+      </div>
+      <div id="tab-images" class="result-box hidden">
+        <div class="result-header"><h3>Images (<span id="imgCount">0</span>)</h3></div>
+        <div class="images-grid" id="imagesGrid"></div>
+      </div>
+    </div>
+
+    <!-- Multi page results -->
+    <div id="multiResults" class="hidden">
+      <div class="meta">
+        <div class="meta-item"><label>Pages Crawled</label><p id="crawlCount">0</p></div>
+        <div class="meta-item"><label>Status</label><p id="crawlStatus">-</p></div>
+      </div>
+      <div class="result-header">
+        <h3>Crawled Pages</h3>
+        <button class="btn-copy" onclick="copyAllPages()">📋 Copy All Pages</button>
+      </div>
+      <div class="page-list" id="pageList"></div>
+      <div class="crawl-errors" id="crawlErrors"></div>
+    </div>
+  </div>
+
+  <script>
+    let mode = "single";
+    let lastData = null;
+    let crawlPages = [];
+    let pollTimer = null;
+
+    document.getElementById("urlInput").addEventListener("keydown", e => { if (e.key === "Enter") startScrape(); });
+
+    function setMode(m) {
+      mode = m;
+      document.querySelectorAll(".mode-btn").forEach((b, i) => {
+        b.classList.toggle("active", (i === 0 && m === "single") || (i === 1 && m === "multi"));
+      });
+      document.getElementById("crawlOptions").classList.toggle("hidden", m === "single");
+      document.getElementById("scrapeBtn").textContent = m === "single" ? "Scrape" : "Crawl";
+      document.getElementById("singleResults").classList.add("hidden");
+      document.getElementById("multiResults").classList.add("hidden");
+    }
+
+    function startScrape() {
+      if (mode === "single") scrapeSingle();
+      else crawlMulti();
+    }
+
+    async function scrapeSingle() {
+      const url = document.getElementById("urlInput").value.trim();
+      const format = document.getElementById("formatSelect").value;
+      if (!url) return;
+
+      showLoading("Scraping page...");
+      hideResults();
+
+      try {
+        const res = await fetch("/api/scrape", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, format }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error);
+
+        lastData = json.data;
+        document.getElementById("metaTitle").textContent = json.data.title || "-";
+        document.getElementById("metaDesc").textContent = json.data.description || "-";
+        document.getElementById("contentArea").textContent = json.data.content;
+        document.getElementById("linkCount").textContent = json.data.links.length;
+        document.getElementById("imgCount").textContent = json.data.images.length;
+        document.getElementById("linksList").innerHTML = json.data.links.map(l =>
+          `<a href="${esc(l.url)}" target="_blank" title="${esc(l.url)}">${esc(l.text)} — ${esc(l.url)}</a>`
+        ).join("");
+        document.getElementById("imagesGrid").innerHTML = json.data.images.map(i =>
+          `<img src="${esc(i.src)}" alt="${esc(i.alt)}" title="${esc(i.alt)}" loading="lazy" onerror="this.style.display='none'" />`
+        ).join("");
+        document.getElementById("singleResults").classList.remove("hidden");
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function crawlMulti() {
+      const url = document.getElementById("urlInput").value.trim();
+      const format = document.getElementById("formatSelect").value;
+      const maxPages = document.getElementById("maxPages").value;
+      if (!url) return;
+
+      showLoading("Starting crawl...");
+      hideResults();
+      document.getElementById("progressBar").classList.remove("hidden");
+      document.getElementById("progressText").classList.remove("hidden");
+
+      try {
+        const res = await fetch("/api/crawl", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url, format, maxPages: parseInt(maxPages) }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error);
+
+        pollCrawl(json.crawlId, parseInt(maxPages));
+      } catch (err) {
+        showError(err.message);
+        hideLoading();
+      }
+    }
+
+    function pollCrawl(crawlId, maxPages) {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/crawl/${crawlId}`);
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error);
+
+          const pct = Math.round((json.pages.length / maxPages) * 100);
+          document.getElementById("progressFill").style.width = pct + "%";
+          document.getElementById("loadingText").textContent = `Crawling... ${json.pages.length}/${maxPages} pages`;
+          document.getElementById("progressText").textContent = json.pages.length > 0
+            ? `Latest: ${json.pages[json.pages.length - 1].title || json.pages[json.pages.length - 1].url}`
+            : "";
+
+          if (json.status === "done") {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            crawlPages = json.pages;
+            renderCrawlResults(json);
+            hideLoading();
+          }
+        } catch (err) {
+          clearInterval(pollTimer);
+          showError(err.message);
+          hideLoading();
+        }
+      }, 1000);
+    }
+
+    function renderCrawlResults(data) {
+      document.getElementById("crawlCount").textContent = data.pages.length;
+      document.getElementById("crawlStatus").textContent = "Complete ✓";
+
+      const list = document.getElementById("pageList");
+      list.innerHTML = data.pages.map((p, i) => `
+        <div class="page-item">
+          <div class="page-item-header" onclick="togglePage(${i})">
+            <h4>${esc(p.title || "Untitled")}</h4>
+            <span class="page-url">${esc(p.url)}</span>
+            <span class="page-badge">${p.links ? p.links.length + ' links' : ''}</span>
+            <span class="page-badge">${p.images ? p.images.length + ' imgs' : ''}</span>
+            <span class="page-badge">${i + 1}</span>
+            <button class="btn-copy" onclick="event.stopPropagation(); copyPageContent(${i})" style="margin-left:8px">📋</button>
+          </div>
+          <div class="page-item-body" id="page-body-${i}">
+            <div class="tabs" style="margin-top:8px">
+              <div class="tab active" onclick="event.stopPropagation(); showPageTab(${i},'content',this)">Content</div>
+              <div class="tab" onclick="event.stopPropagation(); showPageTab(${i},'links',this)">Links (${p.links ? p.links.length : 0})</div>
+              <div class="tab" onclick="event.stopPropagation(); showPageTab(${i},'images',this)">Images (${p.images ? p.images.length : 0})</div>
+            </div>
+            <div id="page-${i}-content">
+              <div class="content-area">${esc(p.content)}</div>
+            </div>
+            <div id="page-${i}-links" class="hidden">
+              <div class="links-list">${(p.links || []).map(l =>
+                `<a href="${esc(l.url)}" target="_blank" title="${esc(l.url)}">${esc(l.text)} — ${esc(l.url)}</a>`
+              ).join("")}</div>
+              <button class="btn-copy" onclick="event.stopPropagation(); copyPageLinks(${i})" style="margin-top:8px">📋 Copy Links</button>
+            </div>
+            <div id="page-${i}-images" class="hidden">
+              <div class="images-grid">${(p.images || []).map(img =>
+                `<img src="${esc(img.src)}" alt="${esc(img.alt)}" title="${esc(img.alt)}" loading="lazy" onerror="this.style.display='none'" />`
+              ).join("")}</div>
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      if (data.errors && data.errors.length > 0) {
+        document.getElementById("crawlErrors").innerHTML =
+          `<p style="color:#888;font-size:13px;margin-bottom:4px">${data.errors.length} page(s) failed:</p>` +
+          data.errors.map(e => `<div class="crawl-error">✗ ${esc(e.url)} — ${esc(e.error)}</div>`).join("");
+      }
+
+      document.getElementById("multiResults").classList.remove("hidden");
+    }
+
+    function togglePage(i) {
+      document.getElementById("page-body-" + i).classList.toggle("open");
+    }
+
+    function showPageTab(pageIdx, tabName, el) {
+      const parent = el.parentElement;
+      parent.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      el.classList.add("active");
+      ["content", "links", "images"].forEach(t => {
+        const section = document.getElementById(`page-${pageIdx}-${t}`);
+        if (section) section.classList.toggle("hidden", t !== tabName);
+      });
+    }
+
+    function showTab(name, el) {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      el.classList.add("active");
+      ["content", "links", "images"].forEach(t => {
+        document.getElementById("tab-" + t).classList.toggle("hidden", t !== name);
+      });
+    }
+
+    function copyContent() {
+      if (lastData) navigator.clipboard.writeText(lastData.content).then(() => flash("Content copied"));
+    }
+    function copyLinks() {
+      if (lastData) navigator.clipboard.writeText(lastData.links.map(l => l.url).join("\n")).then(() => flash("Links copied"));
+    }
+    function copyPageContent(i) {
+      if (crawlPages[i]) navigator.clipboard.writeText(crawlPages[i].content).then(() => flash("Page copied"));
+    }
+    function copyPageLinks(i) {
+      if (crawlPages[i] && crawlPages[i].links) {
+        navigator.clipboard.writeText(crawlPages[i].links.map(l => l.url).join("\n")).then(() => flash("Links copied"));
+      }
+    }
+    function copyAllPages() {
+      const all = crawlPages.map(p => `=== ${p.title || p.url} ===\n${p.url}\n\n${p.content}`).join("\n\n---\n\n");
+      navigator.clipboard.writeText(all).then(() => flash("All pages copied"));
+    }
+
+    function showLoading(text) {
+      document.getElementById("loading").classList.remove("hidden");
+      document.getElementById("loadingText").textContent = text;
+      document.getElementById("error").classList.add("hidden");
+      document.getElementById("scrapeBtn").disabled = true;
+    }
+    function hideLoading() {
+      document.getElementById("loading").classList.add("hidden");
+      document.getElementById("progressBar").classList.add("hidden");
+      document.getElementById("progressText").classList.add("hidden");
+      document.getElementById("scrapeBtn").disabled = false;
+    }
+    function hideResults() {
+      document.getElementById("singleResults").classList.add("hidden");
+      document.getElementById("multiResults").classList.add("hidden");
+      document.getElementById("error").classList.add("hidden");
+    }
+    function showError(msg) {
+      document.getElementById("error").textContent = "Error: " + msg;
+      document.getElementById("error").classList.remove("hidden");
+    }
+    function esc(s) {
+      const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML;
+    }
+    function flash(msg) {
+      const el = document.createElement("div");
+      el.textContent = msg;
+      el.style.cssText = "position:fixed;bottom:20px;right:20px;background:#f97316;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:999;";
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2000);
+    }
+  </script>
+</body>
+</html>
